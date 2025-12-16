@@ -12,52 +12,50 @@
 int main(void){
         char buffer[BUFFER_SIZE];
         ssize_t bytes_read;
-
+	
+	//Welcome Message
         write(STDOUT_FILENO, WELCOME, strlen(WELCOME));
 
-         while (1) {
-        write(STDOUT_FILENO, PROMPT, strlen(PROMPT));
-
-        bytes_read = read(STDIN_FILENO, buffer, BUFFER_SIZE);
-
-	if (bytes_read == 0){
+        while (1) {
+	    //Prompt Printing
+            write(STDOUT_FILENO, PROMPT, strlen(PROMPT));
+	    //Reading the command
+            bytes_read = read(STDIN_FILENO, buffer, BUFFER_SIZE);
+	    //Ctrl+D
+	    if (bytes_read == 0){
 		write(STDOUT_FILENO, "\n", 1);
 		write(STDOUT_FILENO, BYE, strlen(BYE));
 		return 0;
-	}
+	    }
 
-        if (bytes_read <= 0) {
-            continue;
-	}
- 
-        if (buffer[bytes_read - 1] == '\n') {
+            if (bytes_read <= 0) {
+                continue;
+	    }
+	    //'\n' suppression 
             buffer[bytes_read - 1] = '\0';
-        }
 
-	if (bytes_read == 0){
-		continue;
-	}
-
-        if (strncmp(buffer, "exit", 4) == 0 && (bytes_read == 4 )){
+            if (strcmp(buffer, "exit") == 0){
 		write(STDOUT_FILENO, BYE, strlen(BYE));
             	return 0; 
-        }
-
-        pid_t pid = fork();
+            }
+	    //creation of the son processus
+            pid_t pid = fork();
  
-        if (pid == 0) { 
-            char *args[] = { buffer, NULL };
-            execvp(buffer, args);
-
-            write(STDOUT_FILENO, "Command not found\n", strlen("Command not found\n"));
-            exit(1);
-        }
-        else if (pid > 0) { 
-            wait(NULL);
-        }
-        else {
-		write(STDOUT_FILENO, "Fork error\n", strlen("Fork error\n"));
-        }
+            if (pid == 0) {
+		//Son processus 
+                char *args[] = { buffer, NULL };
+                execvp(buffer, args);
+		//If exec fails
+                write(STDERR_FILENO, "Command not found\n", strlen("Command not found\n"));
+                exit(1);
+            }
+            else if (pid > 0) {
+		//Father processus 
+                wait(NULL);
+            }
+            else {
+		write(STDERR_FILENO, "Fork error\n", strlen("Fork error\n"));
+            }
     }
 
     return 0;
