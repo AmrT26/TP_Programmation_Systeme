@@ -137,6 +137,7 @@ Ce TP permet de comprendre les bases d’un shell Unix :
 
 ---
 
-## Auteur
-
-TP Programmation Système – ENSEA
+## Auteurs
+TAOUIS AMR
+EL KHAMLICHI CHAHID
+2G2 TD1 TP1
