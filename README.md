@@ -1,172 +1,124 @@
-# TP Programmation Système – Micro Shell ENSEA
+# Compte rendu de TP : Programmation Système – Micro Shell ENSEA
 
-## Présentation générale et objectifs
-
-Le but de ce TP de Programmation Système est de développer un micro shell Unix minimaliste, appelé **enseash**, afin de mieux comprendre le fonctionnement des entrées/sorties bas niveau, la création de processus et l'exécution de commandes.
-
-Ce document est le **compte rendu du TP**. Il décrit les fonctionnalités demandées dans les questions 1 à 7, ainsi que les principaux appels système utilisés. Pour plus de clarté, seules les explications de fonctionnement sont présentées, sans extraits de code.
+Ce document retrace le développement du micro-shell **enseash**. L'objectif est de comprendre les mécanismes internes d'un shell Unix à travers la manipulation des processus, des descripteurs de fichiers et des mesures de performances.
 
 ---
 
-## Question 1 – Message d'accueil et prompt
+## Détail des étapes de développement
 
-### Objectif
+### Question 1 : Message d'accueil et prompt
 
-La première étape consiste à afficher un message d'accueil au démarrage du shell, puis un prompt pour inviter l'utilisateur à saisir une commande.
+L'objectif est d'initialiser l'interface utilisateur au lancement du programme.
 
-### Fonctionnement
+**Fonctionnement :** Le programme affiche un message de bienvenue, puis un prompt fixe (`enseash %`).
 
-Quand on lance le programme, un message d'accueil s'affiche sur la sortie standard. Ensuite, le shell affiche un prompt fixe (`enseash %`) et se met en attente d'une saisie utilisateur.
+**Appel système `write` :**
 
-### Fonctions utilisées
-
-**write**
-
-* Rôle : permet d'afficher le message d'accueil et le prompt à l'écran
-* Entrée : descripteur de la sortie standard, message à afficher, taille du message
-* Sortie : nombre d'octets effectivement écrits
+- **Rôle :** Envoyer des données vers un descripteur de fichier.
+- **Entrées :** Le descripteur (`STDOUT_FILENO`), le pointeur vers la chaîne de caractères et la taille en octets.
+- **Sorties :** Retourne le nombre d'octets écrits ou `-1` en cas d'erreur.
 
 ---
 
-## Question 2 – Lecture de la commande utilisateur
+### Question 2 : Lecture de la commande utilisateur
 
-### Objectif
+Le shell doit pouvoir capturer une instruction saisie au clavier.
 
-Il s'agit de lire la commande entrée au clavier et de la stocker pour pouvoir la traiter par la suite.
+**Fonctionnement :** Le programme attend une saisie, puis remplace le caractère `\n` final par un caractère nul `\0` pour permettre le traitement de la chaîne.
 
-### Fonctionnement
+**Appel système `read` :**
 
-Le shell lit l'entrée utilisateur depuis l'entrée standard. On retire le caractère de fin de ligne pour simplifier le traitement de la commande.
-
-### Fonctions utilisées
-
-**read**
-
-* Rôle : permet de lire la commande saisie par l'utilisateur
-* Entrée : descripteur de l'entrée standard, buffer de réception, taille maximale
-* Sortie : nombre d'octets lus (renvoie 0 si on atteint la fin de fichier)
+- **Rôle :** Lire des données depuis un descripteur (clavier).
+- **Entrées :** Le descripteur (`STDIN_FILENO`), un tampon (buffer) de réception et la taille maximale à lire.
+- **Sorties :** Retourne le nombre d'octets lus ou `0` en cas de fin de fichier.
 
 ---
 
-## Question 3 – Exécution d'une commande simple
+### Question 3 : Exécution d'une commande simple
 
-### Objectif
+Le shell doit être capable de lancer un programme externe (ex: `fortune`) sans s'arrêter lui-même.
 
-L'objectif ici est de permettre l'exécution d'une commande système (comme `fortune` par exemple) directement depuis le shell.
+**Fonctionnement :** Le shell crée un clone de lui-même. Le fils exécute la commande demandée tandis que le père attend la fin du traitement.
 
-### Fonctionnement
+**Appel système `fork` :**
 
-Quand une commande est saisie, le shell crée un processus fils. Ce processus remplace son image mémoire par celle du programme à exécuter. Pendant ce temps, le processus père attend que l'exécution se termine avant de réafficher le prompt.
+- **Rôle :** Créer un nouveau processus par duplication.
+- **Sorties :** Retourne `0` dans le processus fils et le PID du fils dans le parent.
 
-### Fonctions utilisées
+**Appel système `execvp` :**
 
-**fork**
+- **Rôle :** Remplacer l'image du processus courant par un nouveau programme.
+- **Entrées :** Le nom du fichier exécutable et un tableau d'arguments.
 
-* Rôle : permet de créer un nouveau processus
-* Sortie : renvoie 0 dans le processus fils, et l'identifiant du fils dans le processus père
+**Appel système `wait` :**
 
-**execvp**
-
-* Rôle : exécute la commande demandée
-* Entrée : nom de la commande et liste de ses arguments
-* Sortie : ne renvoie rien si l'exécution réussit
-
-**wait**
-
-* Rôle : fait attendre la fin du processus fils
-* Sortie : renvoie le statut de terminaison du fils
+- **Rôle :** Suspendre le père jusqu'à ce qu'un fils change d'état.
+- **Sorties :** Retourne le PID du fils terminé et remplit une variable de statut.
 
 ---
 
-## Question 4 – Gestion de la commande `exit`
+### Question 4 : Gestion de la commande `exit`
 
-### Objectif
+Permettre une fermeture propre du shell par l'utilisateur.
 
-Il faut permettre à l'utilisateur de quitter le shell proprement.
+**Fonctionnement :** Le programme compare la saisie avec la chaîne `"exit"`.
 
-### Fonctionnement
+**Fonction `strcmp` :**
 
-Si l'utilisateur tape la commande `exit`, le shell affiche un message de fin et se termine correctement.
-
-### Fonctions utilisées
-
-**strcmp**
-
-* Rôle : compare la commande saisie avec la chaîne `exit`
-* Sortie : indique si les chaînes sont identiques ou différentes
-
-**exit**
-
-* Rôle : termine l'exécution du shell
+- **Rôle :** Comparer deux chaînes de caractères.
+- **Sorties :** `0` si les chaînes sont identiques.
 
 ---
 
-## Question 5 – Gestion de la fin de fichier (Ctrl + D)
+### Question 5 : Gestion de la fin de fichier (Ctrl + D)
 
-### Objectif
+Le shell doit s'arrêter si le flux d'entrée est fermé.
 
-Il faut gérer correctement la fermeture du shell quand l'utilisateur envoie un signal de fin de fichier.
-
-### Fonctionnement
-
-Quand la fonction de lecture renvoie 0, cela signifie qu'on a atteint la fin de fichier. Le shell détecte cette situation, affiche un message de sortie et se ferme proprement.
-
-### Fonctions utilisées
-
-**read**
-
-* Sortie : renvoie 0 pour indiquer une fin de fichier
+**Fonctionnement :** Lorsque l'utilisateur presse Ctrl+D, l'appel `read` renvoie `0`. Le shell détecte cette valeur, affiche un message de sortie et termine le processus.
 
 ---
 
-## Question 6 – Affichage du code de retour ou du signal
+### Question 6 : Affichage du code de retour et du temps d'exécution
 
-### Objectif
+Le prompt devient dynamique pour afficher les informations de diagnostic de la commande précédente.
 
-Avant chaque nouveau prompt, on doit afficher comment la commande précédente s'est terminée.
+**Fonctionnement :** Le shell calcule la durée d'exécution et analyse si le fils s'est terminé normalement ou via un signal.
 
-### Fonctionnement
+**Appel système `clock_gettime` :**
 
-Une fois qu'une commande a été exécutée, le shell analyse le statut de fin du processus fils. Il affiche ensuite soit le code de retour, soit le numéro du signal qui a causé l'arrêt du processus.
+- **Rôle :** Récupérer la valeur d'une horloge système avec précision.
+- **Entrées :** L'identifiant de l'horloge (`CLOCK_MONOTONIC`) et une structure `timespec`.
 
-### Fonctions utilisées
+**Macros `WIFEXITED` / `WIFSIGNALED` :**
 
-**wait** et macros associées
-
-* Rôle : récupèrent et interprètent le statut du processus fils
-* Sortie : donnent des informations sur la terminaison normale ou par signal
+- **Rôle :** Interpréter l'entier de statut rempli par `wait`.
 
 ---
 
-## Question 7 – Mesure du temps d'exécution
+### Question 7 : Arguments et redirections de sortie
 
-### Objectif
+Support des commandes avec paramètres et redirection vers un fichier via le symbole `>`.
 
-On souhaite afficher le temps d'exécution de chaque commande lancée depuis le shell.
+**Fonctionnement :** La commande est découpée en tokens. Si `>` est présent, le shell redirige la sortie standard vers le fichier spécifié.
 
-### Fonctionnement
+**Appel système `open` :**
 
-On prend un horodatage juste avant et juste après l'exécution de la commande. La différence entre ces deux moments permet de calculer le temps écoulé, qui est ensuite affiché en millisecondes dans le prompt.
+- **Rôle :** Ouvrir ou créer un fichier.
+- **Entrées :** Chemin du fichier, options de contrôle (`O_CREAT`, `O_WRONLY`, `O_TRUNC`) et droits d'accès.
 
-### Fonctions utilisées
+**Appel système `dup2` :**
 
-**clock_gettime**
-
-* Rôle : obtient une mesure de temps précise
-* Entrée : horloge monotone
-* Sortie : structure contenant le temps courant
+- **Rôle :** Dupliquer un descripteur de fichier vers un autre.
+- **Entrées :** Le descripteur source (le fichier) et la destination (`STDOUT_FILENO`).
 
 ---
 
 ## Conclusion
 
-Ce TP nous a permis de mettre en pratique les notions fondamentales de la programmation système sous Unix : les entrées/sorties bas niveau, la création et la synchronisation de processus, l'exécution de programmes externes et la gestion des signaux.
-
-Le micro shell qu'on a développé constitue une base fonctionnelle et claire pour bien comprendre le fonctionnement interne d'un shell Unix.
+Ce TP a permis de manipuler les bases de la programmation système Unix. Le passage à une structure modulaire avec `utils.c` et `utils.h` facilite l'évolution du shell et la gestion des redirections complexes.
 
 ---
 
-### Chargée de TP : BERANGER Claire
-### TAOUIS Amr
-### EL KHAMLICHI Chahid
-### 2G2 – TD1 – TP1
+**Étudiants :** TAOUIS Amr & EL KHAMLICHI Chahid  
+**Encadrante :** BERANGER Claire  
+**Groupe :** 2G2 – TD1 – TP1
