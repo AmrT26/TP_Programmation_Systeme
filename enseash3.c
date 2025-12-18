@@ -23,15 +23,15 @@ int main(void){
             bytes_read = read(STDIN_FILENO, buffer, BUFFER_SIZE);
 	    //Ctrl+D
 	    if (bytes_read == 0){
-		write(STDOUT_FILENO, "\n", 1);
-		write(STDOUT_FILENO, BYE, strlen(BYE));
+		write(STDOUT_FILENO, "\n", 1);//line break -> clean display on the terminal
+		write(STDOUT_FILENO, BYE, strlen(BYE));//Printing of the BYE message
 		return 0;
 	    }
 
             if (bytes_read <= 0) {
-                continue;
+                continue;//error happened
 	    }
-	    //'\n' suppression 
+	    //'\n' replacement with '\0' for strcmp
             buffer[bytes_read - 1] = '\0';
 
             if (strcmp(buffer, "exit") == 0){
