@@ -164,5 +164,5 @@ Ce TP nous a permis de manipuler les principaux concepts de la programmation sys
 ---
 
 **Étudiants :** TAOUIS Amr & EL KHAMLICHI Chahid  
-**Encadrante :** BERANGER Claire  
+**Encadrante :** Mme. BERANGER Claire  
 **Groupe :** 2G2 – TD1 – TP1
