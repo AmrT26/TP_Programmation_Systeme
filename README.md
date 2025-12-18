@@ -97,7 +97,7 @@ Le prompt devient dynamique pour afficher les informations de diagnostic de la c
 
 ### Question 7 : Arguments et redirections de sortie
 
-Support des commandes avec paramètres et redirection vers un fichier via le symbole `>`.
+Support des commandes avec paramètres et redirection vers un fichier via le symbole `>`. Exemple de l'écriture du résultat de **ls** dans un fichier texte.
 
 **Fonctionnement :** La commande est découpée en tokens. Si `>` est présent, le shell redirige la sortie standard vers le fichier spécifié.
 
