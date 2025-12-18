@@ -1,145 +1,172 @@
-=======
-# TP Programmation Système – ENSEA Micro Shell (README)
+# TP Programmation Système – Micro Shell ENSEA
 
-## Description
+## Présentation générale et objectifs
 
-Ce projet consiste à développer un **micro shell Unix minimal** nommé `enseash`, dans le cadre du TP de Programmation Système (2ᵉ année – ENSEA).
+Le but de ce TP de Programmation Système est de développer un micro shell Unix minimaliste, appelé **enseash**, afin de mieux comprendre le fonctionnement des entrées/sorties bas niveau, la création de processus et l'exécution de commandes.
 
-Ce README fait office de **compte rendu de TP**. Il décrit les fonctionnalités implémentées, les **fonctions système utilisées**, ainsi que les **entrées et sorties** associées. Aucun code source n’est inclus.
-
----
-
-## Question 1 – Message d’accueil et sortie simple
-
-### Objectif
-
-* Afficher un message d’accueil stocké dans la macro `WELCOME`
-* Afficher un prompt `enseash %`
-* Quitter le shell lorsque l’utilisateur saisit `exit`
-
-### Fonctionnement
-
-* À l’entrée dans la console ENSEA, le message d’accueil est affiché
-* Le shell attend une entrée utilisateur
-* L’entrée est comparée à la chaîne `"exit"`
-* En cas de correspondance, le shell se termine
-
-### Fonctions utilisées
-
-**`write(int fd, const void *buffer, size_t count)`**
-
-* Rôle : affichage du message d’accueil et du prompt
-* Entrée : sortie standard (1), message, taille
-* Sortie : nombre d’octets écrits
-
-**`read(int fd, void *buffer, size_t count)`**
-
-* Rôle : lecture de l’entrée utilisateur
-* Entrée : entrée standard (0), buffer, taille maximale
-* Sortie : nombre d’octets lus
-
-**`strncmp(const char *s1, const char *s2, size_t n)`**
-
-* Rôle : comparaison de l’entrée utilisateur avec `exit`
-* Sortie : 0 si les chaînes sont identiques
-
-### Entrée / Sortie
-
-* Entrée : `exit`
-* Sortie : arrêt du shell
+Ce document est le **compte rendu du TP**. Il décrit les fonctionnalités demandées dans les questions 1 à 7, ainsi que les principaux appels système utilisés. Pour plus de clarté, seules les explications de fonctionnement sont présentées, sans extraits de code.
 
 ---
 
-## Question 2 – Lecture et exécution d’une commande
+## Question 1 – Message d'accueil et prompt
 
 ### Objectif
 
-* Lire une commande saisie dans la console
-* Exécuter cette commande (exemple : `fortune`)
-* Revenir au prompt après l’exécution
-* Quitter avec `exit`
+La première étape consiste à afficher un message d'accueil au démarrage du shell, puis un prompt pour inviter l'utilisateur à saisir une commande.
 
 ### Fonctionnement
 
-* L’utilisateur saisit une commande
-* Un processus fils est créé
-* La commande est exécutée dans le processus fils
-* Le processus père attend la fin de l’exécution
-* Le prompt est réaffiché
+Quand on lance le programme, un message d'accueil s'affiche sur la sortie standard. Ensuite, le shell affiche un prompt fixe (`enseash %`) et se met en attente d'une saisie utilisateur.
 
 ### Fonctions utilisées
 
-**`fork()`**
+**write**
 
-* Rôle : création d’un processus fils
-* Sortie : 0 dans le fils, PID dans le père
-
-**`execvp(const char *file, char *const argv[])`**
-
-* Rôle : exécution de la commande saisie
-* Entrée : nom de la commande, liste d’arguments
-* Sortie : aucune en cas de succès
-
-**`wait(int *status)`**
-
-* Rôle : attente de la fin du processus fils
-* Sortie : PID du processus terminé
-
-### Entrée / Sortie
-
-* Entrée : commande utilisateur (ex. `fortune`)
-* Sortie : affichage du résultat de la commande
+* Rôle : permet d'afficher le message d'accueil et le prompt à l'écran
+* Entrée : descripteur de la sortie standard, message à afficher, taille du message
+* Sortie : nombre d'octets effectivement écrits
 
 ---
 
-## Question 3 – Gestion de la sortie du shell
+## Question 2 – Lecture de la commande utilisateur
 
 ### Objectif
 
-* Quitter le shell avec la commande `exit`
-* Quitter le shell avec `Ctrl + D` (EOF)
-* Afficher un message de fin avant fermeture
+Il s'agit de lire la commande entrée au clavier et de la stocker pour pouvoir la traiter par la suite.
 
 ### Fonctionnement
 
-* Si l’utilisateur saisit `exit`, le shell se ferme
-* Si `read()` retourne 0 (EOF), le shell se ferme
-* Le message `Bye bye...` est affiché avant la fin
+Le shell lit l'entrée utilisateur depuis l'entrée standard. On retire le caractère de fin de ligne pour simplifier le traitement de la commande.
 
 ### Fonctions utilisées
 
-**`read()`**
+**read**
 
-* Rôle : détection de la fin de fichier (Ctrl + D)
-* Sortie : 0 en cas d’EOF
+* Rôle : permet de lire la commande saisie par l'utilisateur
+* Entrée : descripteur de l'entrée standard, buffer de réception, taille maximale
+* Sortie : nombre d'octets lus (renvoie 0 si on atteint la fin de fichier)
 
-**`write()`**
+---
 
-* Rôle : affichage du message de sortie
+## Question 3 – Exécution d'une commande simple
 
-**`exit(int status)`**
+### Objectif
 
-* Rôle : terminaison du processus du shell
+L'objectif ici est de permettre l'exécution d'une commande système (comme `fortune` par exemple) directement depuis le shell.
 
-### Entrée / Sortie
+### Fonctionnement
 
-* Entrée : `exit` ou `Ctrl + D`
-* Sortie : message `Bye bye...` et fermeture du shell
+Quand une commande est saisie, le shell crée un processus fils. Ce processus remplace son image mémoire par celle du programme à exécuter. Pendant ce temps, le processus père attend que l'exécution se termine avant de réafficher le prompt.
+
+### Fonctions utilisées
+
+**fork**
+
+* Rôle : permet de créer un nouveau processus
+* Sortie : renvoie 0 dans le processus fils, et l'identifiant du fils dans le processus père
+
+**execvp**
+
+* Rôle : exécute la commande demandée
+* Entrée : nom de la commande et liste de ses arguments
+* Sortie : ne renvoie rien si l'exécution réussit
+
+**wait**
+
+* Rôle : fait attendre la fin du processus fils
+* Sortie : renvoie le statut de terminaison du fils
+
+---
+
+## Question 4 – Gestion de la commande `exit`
+
+### Objectif
+
+Il faut permettre à l'utilisateur de quitter le shell proprement.
+
+### Fonctionnement
+
+Si l'utilisateur tape la commande `exit`, le shell affiche un message de fin et se termine correctement.
+
+### Fonctions utilisées
+
+**strcmp**
+
+* Rôle : compare la commande saisie avec la chaîne `exit`
+* Sortie : indique si les chaînes sont identiques ou différentes
+
+**exit**
+
+* Rôle : termine l'exécution du shell
+
+---
+
+## Question 5 – Gestion de la fin de fichier (Ctrl + D)
+
+### Objectif
+
+Il faut gérer correctement la fermeture du shell quand l'utilisateur envoie un signal de fin de fichier.
+
+### Fonctionnement
+
+Quand la fonction de lecture renvoie 0, cela signifie qu'on a atteint la fin de fichier. Le shell détecte cette situation, affiche un message de sortie et se ferme proprement.
+
+### Fonctions utilisées
+
+**read**
+
+* Sortie : renvoie 0 pour indiquer une fin de fichier
+
+---
+
+## Question 6 – Affichage du code de retour ou du signal
+
+### Objectif
+
+Avant chaque nouveau prompt, on doit afficher comment la commande précédente s'est terminée.
+
+### Fonctionnement
+
+Une fois qu'une commande a été exécutée, le shell analyse le statut de fin du processus fils. Il affiche ensuite soit le code de retour, soit le numéro du signal qui a causé l'arrêt du processus.
+
+### Fonctions utilisées
+
+**wait** et macros associées
+
+* Rôle : récupèrent et interprètent le statut du processus fils
+* Sortie : donnent des informations sur la terminaison normale ou par signal
+
+---
+
+## Question 7 – Mesure du temps d'exécution
+
+### Objectif
+
+On souhaite afficher le temps d'exécution de chaque commande lancée depuis le shell.
+
+### Fonctionnement
+
+On prend un horodatage juste avant et juste après l'exécution de la commande. La différence entre ces deux moments permet de calculer le temps écoulé, qui est ensuite affiché en millisecondes dans le prompt.
+
+### Fonctions utilisées
+
+**clock_gettime**
+
+* Rôle : obtient une mesure de temps précise
+* Entrée : horloge monotone
+* Sortie : structure contenant le temps courant
 
 ---
 
 ## Conclusion
 
-Ce TP permet de comprendre les bases d’un shell Unix :
+Ce TP nous a permis de mettre en pratique les notions fondamentales de la programmation système sous Unix : les entrées/sorties bas niveau, la création et la synchronisation de processus, l'exécution de programmes externes et la gestion des signaux.
 
-* Entrées/sorties bas niveau (`read`, `write`)
-* Gestion des processus (`fork`, `exec`, `wait`)
-* Interaction utilisateur et contrôle du flot d’exécution
+Le micro shell qu'on a développé constitue une base fonctionnelle et claire pour bien comprendre le fonctionnement interne d'un shell Unix.
 
 ---
 
-## Auteurs
-TAOUIS AMR
-EL KHAMLICHI CHAHID
-2G2 TD1 TP1
->>>>>>> a7ec69829de92f1f8a73dd8b38ab371b5e2d9e01
+### Chargée de TP : BERANGER Claire
+### TAOUIS Amr
+### EL KHAMLICHI Chahid
+### 2G2 – TD1 – TP1
