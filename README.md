@@ -20,7 +20,7 @@ L'objectif est d'initialiser l'interface utilisateur au lancement du programme.
 
 ---
 
-### Question 2 : Lecture de la commande utilisateur
+### Question 2 : Lecture de la commande utilisateur, exécution d'une commande simple
 
 Le shell doit pouvoir capturer une instruction saisie au clavier.
 
@@ -32,11 +32,7 @@ Le shell doit pouvoir capturer une instruction saisie au clavier.
 - **Entrées :** Le descripteur (`STDIN_FILENO`), un tampon (buffer) de réception et la taille maximale à lire.
 - **Sorties :** Retourne le nombre d'octets lus ou `0` en cas de fin de fichier.
 
----
-
-### Question 3 : Exécution d'une commande simple
-
-Le shell doit être capable de lancer un programme externe (ex: `fortune`) sans s'arrêter lui-même.
+Le shell doit être capable de lancer un programme externe (ex: `fortune`(n'a pas fonctionné), `ls`, `date` ) sans s'arrêter lui-même.
 
 **Fonctionnement :** Le shell crée un clone de lui-même. Le fils exécute la commande demandée tandis que le père attend la fin du traitement.
 
@@ -57,9 +53,13 @@ Le shell doit être capable de lancer un programme externe (ex: `fortune`) sans 
 
 ---
 
-### Question 4 : Gestion de la commande `exit`
+### Question 3 : Gestion de la sortie du shell (`exit` et Ctrl+D)
 
 Permettre une fermeture propre du shell par l'utilisateur.
+Si on  saisit la commande `exit`, le shell affiche un message de sortie et se termine.
+Si on ferme l’entrée standard avec `Ctrl+D`, l’appel système `read` retourne `0`,
+ce qui est interprété comme une fin de fichier (EOF).
+Le shell détecte cette condition et se termine proprement.
 
 **Fonctionnement :** Le programme compare la saisie avec la chaîne `"exit"`.
 
@@ -68,22 +68,17 @@ Permettre une fermeture propre du shell par l'utilisateur.
 - **Rôle :** Comparer deux chaînes de caractères.
 - **Sorties :** `0` si les chaînes sont identiques.
 
----
-
-### Question 5 : Gestion de la fin de fichier (Ctrl + D)
-
 Le shell doit s'arrêter si le flux d'entrée est fermé.
 
-**Fonctionnement :** Lorsque l'utilisateur presse Ctrl+D, l'appel `read` renvoie `0`. Le shell détecte cette valeur, affiche un message de sortie et termine le processus.
-
 ---
 
-### Question 6 : Affichage du code de retour et du temps d'exécution
+### Question 4 : Affichage du code de retour
 
 Le prompt devient dynamique pour afficher les informations de diagnostic de la commande précédente.
 
-**Fonctionnement :** Le shell calcule la durée d'exécution et analyse si le fils s'est terminé normalement ou via un signal.
-
+**Fonctionnement :** Le shell analyse si le fils s'est terminé normalement (exit) ou via un signal(sign). Ainsi :
+- Si le processus fils se termine normalement, le code de retour est affiché.
+- S’il est interrompu par un signal, le numéro du signal est affiché.
 **Appel système `clock_gettime` :**
 
 - **Rôle :** Récupérer la valeur d'une horloge système avec précision.
@@ -95,27 +90,78 @@ Le prompt devient dynamique pour afficher les informations de diagnostic de la c
 
 ---
 
-### Question 7 : Arguments et redirections de sortie
+### Question 5 : mesure du temps d’exécution des commandes
+
+Le shell mesure la durée d’exécution de chaque commande lancée.
+
+**Fonctionnement :**
+- L’horloge est lue avant la création du processus fils.
+- Une seconde lecture est effectuée après la fin de la commande.
+- La durée est calculée en millisecondes.
+
+**Appel système `clock_gettime` :**
+- Utilisation de l’horloge `CLOCK_MONOTONIC` afin d’éviter les problèmes liés
+  aux changements de l’horloge système.
+
+---
+
+### Question 6 : Exécution d’une commande complexe (avec arguments) 
+
+Le shell doit être capable d’exécuter des commandes comportant des arguments.
+
+**Fonctionnement :**
+- La ligne de commande qu'on saisi est découpée en plusieurs éléments
+  (nom de la commande et arguments).
+- Ces éléments sont stockés dans un tableau de chaînes de caractères.
+- Le processus fils appelle `execvp` avec ce tableau pour exécuter la commande
+  avec ses arguments.
+
+**Fonction utilisée :**
+- `strtok` pour découper la chaîne de caractères en tokens séparés par des espaces.
+
+**Appel système `execvp` :**
+- Permet d’exécuter une commande en recherchant automatiquement l’exécutable
+  dans les répertoires définis par la variable d’environnement `PATH`.
+- Prend en paramètre le nom de la commande et un tableau d’arguments terminé par `NULL`.
+
+Cette façon de faire permet au shell d’exécuter des commandes complexes comme
+`hostname -i` ou `fortune -s osfortune`, tout en gardant le même mécanisme
+de création de processus que pour les commandes simples.
+
+---
+
+### Question 7 : Gestion des redirections vers stdin et stdout avec ‘<’ et ‘>’  
 
 Support des commandes avec paramètres et redirection vers un fichier via le symbole `>`. Exemple de l'écriture du résultat de **ls** dans un fichier texte.
+Le contenu de la commande `ls` est alors écrit dans le fichier `files.txt` au lieu d’être affiché à l’écran.
 
-**Fonctionnement :** La commande est découpée en tokens. Si `>` est présent, le shell redirige la sortie standard vers le fichier spécifié.
+**Fonctionnement :**
+- La commande est découpée en tokens pour détecter la présence du symbole `>`.
+- Le nom du fichier de redirection est récupéré.
+- La sortie standard (`STDOUT_FILENO`) est redirigée vers le fichier indiqué avant
+  l’exécution de la commande.
 
 **Appel système `open` :**
-
-- **Rôle :** Ouvrir ou créer un fichier.
-- **Entrées :** Chemin du fichier, options de contrôle (`O_CREAT`, `O_WRONLY`, `O_TRUNC`) et droits d'accès.
+- Ouvre ou crée le fichier de sortie.
+- Utilisé avec les options :
+  - `O_CREAT` : création du fichier s’il n’existe pas
+  - `O_WRONLY` : ouverture en écriture seule
+  - `O_TRUNC` : écrasement du contenu existant
 
 **Appel système `dup2` :**
+- Duplique le descripteur du fichier de sortie sur `STDOUT_FILENO`.
+- Permet à la commande exécutée d’écrire directement dans le fichier.
 
-- **Rôle :** Dupliquer un descripteur de fichier vers un autre.
-- **Entrées :** Le descripteur source (le fichier) et la destination (`STDOUT_FILENO`).
+**Appel système `execvp` :**
+- Lance la commande avec ses arguments après la redirection.
 
 ---
 
 ## Conclusion
 
-Ce TP a permis de manipuler les bases de la programmation système Unix. Le passage à une structure modulaire avec `utils.c` et `utils.h` facilite l'évolution du shell et la gestion des redirections complexes.
+Ce TP nous  a permis de manipuler les bases de la programmation système Unix. L'utilisation de `utils.c` et `utils.h` facilite l'évolution du shell et la gestion des redirections complexes.
+Ce TP nous a permis de manipuler les principaux concepts de la programmation système. La structuration finale du projet avec l'utilisation de `utils.c` et `utils.h` améliore
+la lisibilité du code et limite la redondance.
 
 ---
 
