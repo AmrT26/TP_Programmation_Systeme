@@ -159,9 +159,7 @@ Le contenu de la commande `ls` est alors écrit dans le fichier `files.txt` au l
 
 ## Conclusion
 
-Ce TP nous  a permis de manipuler les bases de la programmation système Unix. L'utilisation de `utils.c` et `utils.h` facilite l'évolution du shell et la gestion des redirections complexes.
-Ce TP nous a permis de manipuler les principaux concepts de la programmation système. La structuration finale du projet avec l'utilisation de `utils.c` et `utils.h` améliore
-la lisibilité du code et limite la redondance.
+Ce TP nous a permis de manipuler les principaux concepts de la programmation système. La structuration finale du projet avec l'utilisation de `utils.c` et `utils.h` améliore la lisibilité du code et limite la redondance.
 
 ---
 
